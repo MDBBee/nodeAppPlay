@@ -5,6 +5,8 @@ const bodyParser = require("body-parser");
 const sequelize = require("./util/database");
 const User = require("./models/user");
 const Product = require("./models/product");
+const Cart = require("./models/cart");
+const CartItem = require("./models/cart-item");
 const errorController = require("./controllers/error");
 const app = express();
 
@@ -17,9 +19,6 @@ const { log } = require("console");
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
-
-app.use("/admin", adminRoutes);
-app.use(shopRoutes);
 app.use((req, res, next) => {
   User.findByPk(1)
     .then((user) => {
@@ -29,16 +28,23 @@ app.use((req, res, next) => {
     .catch((err) => console.log(err));
 });
 
+app.use("/admin", adminRoutes);
+app.use(shopRoutes);
+
 app.use(errorController.get404);
 
 Product.belongsTo(User, { constraints: true, onDelete: "CASCADE" });
 User.hasMany(Product);
+User.hasOne(Cart);
+Cart.belongsTo(User);
+Cart.belongsToMany(Product, { through: CartItem });
+Product.belongsToMany(Cart, { through: CartItem });
 
 sequelize
+  // .sync({ force: true })
   .sync()
   .then((res) => {
     return User.findByPk(1);
-    // console.log(res);
   })
   .then((user) => {
     if (!user) {
@@ -47,6 +53,12 @@ sequelize
     return user;
   })
   .then((user) => {
-    app.listen(5000);
+    user.getCart().then((cart) => {
+      if (!cart) {
+        return user.createCart();
+      }
+      return cart;
+    });
   })
+  .then((_) => app.listen(5000))
   .catch((err) => console.log(err));

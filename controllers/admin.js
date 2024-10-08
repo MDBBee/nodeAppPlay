@@ -1,4 +1,5 @@
 const Product = require("../models/product");
+const sequelize = require("../util/database");
 
 exports.getAddProduct = (req, res, next) => {
   res.render("admin/edit-product", {
@@ -13,12 +14,13 @@ exports.postAddProduct = (req, res, next) => {
   const imageUrl = req.body.imageUrl;
   const price = req.body.price;
   const description = req.body.description;
-  Product.create({
-    title,
-    description,
-    price,
-    imageUrl,
-  })
+  req.user
+    .createProduct({
+      title,
+      description,
+      price,
+      imageUrl,
+    })
     .then((_) => {
       res.redirect("/products");
     })
